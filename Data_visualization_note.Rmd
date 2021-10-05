@@ -2,29 +2,185 @@
 title: "Data visualization note"
 author: "Ling"
 date: "10/5/2021"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggridges)
+```
+# Questions for HW
+
+  - *no $ in HW*
+
+# data visualization and explanatory data analysis (EDA)
+
+- EDA: between loading data and formal analysis
+  - visualization
+  - data completeness and reliability
+  - quantification of centrality and variability
+  - initial evaluation of hypothesis
+  - hypothesis generation
+- visualization
+  - to look at data
+  - eye-balling? --> should be quickly to make a plot in EDA
+
+## `ggplot`
+
+- support: google and stackoverflow
+- "trouble in making a plot" <-- trouble with *data tidiness*
+
+- graph components
+  - data
+  - aesthetic mappings (x=, y=)
+  - geoms
+  - *facets
+  - *scales
+  - *statistics
+
+# practices
+
+Using the same datasets in data wrangling.
+
+## e.g.1 NOAA weather data
+
+```{r}
+weather_df = # pull data from 3 variables
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728", "USC00519397", "USS0023B17S"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate( 
+    name = recode( #create a new variable "name"
+      id,  # transform station id into location
+      USW00094728 = "CentralPark_NY", 
+      USC00519397 = "Waikiki_HA",
+      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+
+weather_df
 ```
 
-## R Markdown
+## making plots
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+- scatterplot
+  - min temp and max temp
+  
+```{r scatterplot}
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point()
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# or
 
-```{r cars}
-summary(cars)
+weather_df %>%
+  ggplot(aes(x = tmin, y = tmax)) +
+    geom_point()
+
+# or
+
+plot_weather = 
+  weather_df %>%
+  ggplot(aes(x = tmin, y = tmax)) 
+
+plot_weather + geom_point()
 ```
 
-## Including Plots
+- make an advanced scatterplot
+```{r advanced scatter}
 
-You can also embed plots, for example:
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point(aes(color = name), alpha = 0.5) + # alpha --> add transparency
+  geom_smooth(aes(color = name), se = F) +
+  facet_grid(. ~ name) # show the plots differently
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# or
+ggplot(weather_df, aes(x = tmin, y = tmax, color = name)) + # if want the option global for the code
+  geom_point(alpha = 0.5) + # alpha --> add transparency
+  geom_smooth(se = F) +
+  facet_grid(. ~ name) 
+
+# to turn off color in some plots
+ggplot(weather_df, aes(x = tmin, y = tmax, color = name)) + 
+  geom_point(alpha = 0.5) + 
+  geom_smooth(aes(color = NULL), se = F) 
+
+weather_df %>%
+  ggplot(aes(x = date, y = tmax, color = name)) +
+    geom_smooth(se = F) +
+    geom_point() +
+    facet_grid(. ~ name)
+# what if "se = T"?
+weather_df %>%
+  ggplot(aes(x = date, y = tmax, color = name)) +
+    geom_smooth(se = T)
+# actually the SEs are not helpful
+
+# learning assessment
+
+weather_df %>%
+  filter(name == "CentralPark_NY") %>%
+  mutate(
+      tmin = tmax * (9 / 5) + 32,
+      tmax = tmin * (9 / 5) + 32) %>%
+  ggplot() +
+    geom_point() +
+    geom_smooth()
+
+# hex: heatmap
+# need hexbin package
+weather_df %>%
+  ggplot(aes(x = tmin, y = tmax)) +
+    geom_hex()
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+- Univariate plots
+```{r univariate plots}
+weather_df %>%
+  ggplot(aes(x = tmax, color = name)) +
+    geom_histogram() +
+    facet_grid( . ~ name)
+
+# notice color vs. fill
+
+weather_df %>%
+  ggplot(aes(x = tmax, fill = name)) +
+    geom_density(alpha = 0.4, adjust = 0.5, color = "blue") 
+
+```
+
+- try other plots
+  - box plot
+```{r boxplot}
+ggplot(weather_df, aes(x = name, y = tmax)) +
+  geom_boxplot()
+
+```
+  - violin plot
+```{r}
+ggplot(weather_df, aes(x = name, y = tmax)) +
+  geom_violin(aes(fill = name), alpha = .5) +
+  stat_summary( fun = "median", color = "blue")
+```
+
+  - ridge plot: a replacement for both boxplots and violin plots. in `ggridges` package. Helpful when observing distributions across multiple categories
+  
+```{r ridge plot}
+ggplot(weather_df, aes(x = tmax, y = name)) + 
+  geom_density_ridges(scale = .85)
+```
+
+n.b. 
+
+- saving and embedding plots
+  
+
+
+
+
+
+
