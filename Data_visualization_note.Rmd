@@ -9,12 +9,13 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggridges)
+library(patchwork)
 ```
 # Questions for HW
 
   - *no $ in HW*
 
-# data visualization and explanatory data analysis (EDA)
+# data visualization and explanatory data analysis (EDA) 1
 
 - EDA: between loading data and formal analysis
   - visualization
@@ -30,6 +31,7 @@ library(ggridges)
 
 - support: google and stackoverflow
 - "trouble in making a plot" <-- trouble with *data tidiness*
+- *GGPLOT ASSUMES THE DATA ARE TIDY!* 
 
 - graph components
   - data
@@ -177,10 +179,278 @@ ggplot(weather_df, aes(x = tmax, y = name)) +
 n.b. 
 
 - saving and embedding plots
+
+```{r set the plot size, global option}
+knitr::opts_chunk$set(
+  fig.width = 0.6, 
+  fig.asp = 0.6,
+  out.width = "90%" # 90% of the full width, leave some space
+)
+```
+
+or 
+
+```{r fig.width= 12}
+ggplot(weather_df, aes(x = tmax, y = name)) + 
+  geom_density_ridges(scale = .85)
+
+```
+
+# visualization 2
+
+## questions last class
+
+- `aes(color = "blue")` vs. `color = "blue"`
+  - anything in `aes` is a variable
+  - `color` out of `aes` is to color the plot.
+
+- update Mr. Trash Wheel dataset
+
+## lec
+
+- a good pic
+  - show as much of the data as possible
+  - avoid superfluous frills
+  - "what's the audience want to see?"
+  - facilitate comparisons
+    - DO NOT do pie charts unless describing a pie
+    - group in a sensible order
+    - common axes
+    - color to highlight groups
+    
+- advanced graph components and customizing the plot
+
+## practice
+
+1. NOAA weather data
+```{r review the scatter plot made in visualization 1}
+
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5)
+
+# add labels
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs( # labs: title, axes, caption("ref" on the lower right)
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  ) +
+  scale_color_hue(
+    name = "location",
+    h = c(100,300))
+
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package") + 
+  scale_x_continuous(
+    breaks = c(-15, 0, 15), 
+    labels = c("-15ºC", "0", "15"),
+    limits = c(-20, 30)) + 
+  scale_y_continuous(
+    trans = "sqrt", 
+    position = "right")
+
+# change the hue
+library(viridis)
+ggp_temp_plot = 
+  weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  ) + 
+  viridis::scale_color_viridis(
+    name = "Location", 
+    discrete = TRUE # cont color gradient vs. discrete color
+  )
+
+ggp_temp_plot
+
+# themes
+# background color, elements in the plot
+
+ggp_temp_plot + 
+  theme(legend.position = "bottom") # put the legend at the bottom. "none" is to remove the legend
+
+# get rid of the gray background
+ggp_temp_plot +
+  theme_bw() # black and white
+
+# to make the plot in excel style, use ggthemes::themes_excel
+
+ggp_temp_plot +
+  ggthemes::theme_excel() # DO NOT  use the excel 2003 theme
+```
+
+*the order of `theme_bw()` and `theme` really matters!*
+
+- theme_bw() --> theme()
+  - the elements made by `theme_bw()` will be overwritten
+- theme() --> theme_bw()
+  - the elements made by `theme()` will be overwritten
   
+*setting options*
+put it at the beginning
+
+# visualization3: EDA
+
+## explanatory data analysis (EDA)
+
+- EDA includes
+  - visualization
+  - checks for data completeness and reliability
+  - initial evaluation of hypothesis
+  - hypothesis generation
+  
+- grouping info.
+  - numerical summaries of data now, esp. w/in groups
+  - `group_by()` how data is structured
+    - beneath the data frame, not show directly
+  - `summarize()` compute one-number summaries
+
+- NOTE
+  - the blur line between EDA and formal analysis
+  - only run the analysis necessary
+  
+## practice
+
+```{r}
+weather_df %>%
+  mutate(
+    month = lubridate::floor_date(date, unit = "month")) %>%
+  select(name, id, everything())
+```
+
+`group_by()`
+
+```{r}
+weather_df %>%
+  mutate(
+    month = lubridate::floor_date(date, unit = "month")) %>%
+  select(name, id, everything()) %>%
+  group_by(name, month)
+```
+Use `ungroup()` to remove groups.
+
+counting things using `summarize()`
+```{r}
+weather_df %>%
+    mutate(month = lubridate::floor_date(date, unit = "month")) %>%
+  select(name, id, everything()) %>%
+    group_by(month) %>%
+    summarize(n_obs = n())
+
+weather_df %>%
+    mutate(month = lubridate::floor_date(date, unit = "month")) %>%
+  select(name, id, everything()) %>%
+    group_by(name,month) %>%
+    summarize(n_obs = n())
+
+weather_df %>%
+    mutate(month = lubridate::floor_date(date, unit = "month")) %>%
+  select(name, id, everything()) %>%
+  pull(month) %>%
+  table
+```
+
+use `janitor::tabyl` to create 2x2 tables
+more general summaries
+```{r}
+weather_df %>%
+  mutate(month = lubridate::floor_date(date, unit = "month")) %>%
+  group_by(month) %>%
+  summarize(
+    n_obs = n(),
+    n_days = n_distinct(date),
+    tmax_mean = mean(tmax, na.rm = T),
+    tmax_sd = sd(tmax, na.rm = T)) %>%
+  ggplot(aes(x = month, y = tmax_mean, color = name)) +
+    geom_point()
+```
+
+grouped mutate
+```{r}
+weather_df %>%
+  mutate(
+    month = lubridate::floor_date(date, unit = "month"),
+    mean_tmax = mean(tmax, na.rm = T)) %>%
+  ggplot(aes(x = month, y = mean_tmax, color = name)) +
+    geom_point()
+
+# versus
+
+weather_df %>%
+  group_by(name) %>%
+  mutate(
+    month = lubridate::floor_date(date, unit = "month"),  
+    mean_tmax = mean(tmax, na.rm = T)) %>%
+  ggplot(aes(x = month, y = mean_tmax, color = name)) +
+    geom_point()
+```
+`mean_rank`
+```{r}
+weather_df %>%
+  mutate(
+    month = lubridate::floor_date(date, unit = "month"),  
+    tmax_rank = min_rank(desc(tmax))) #min_rank to rank variables, desc for in a descending order
+```
+
+window function
+lagged variables: how big is the day-to-day difference?
+```{r}
+weather_df %>%
+  mutate(
+    month = lubridate::floor_date(date, unit = "month"),  
+    lag_tmax = lag(tmax,n = 1)) # comparing T_d vs. T_(d-1)
+
+# versus
+weather_df %>%
+  group_by(name) %>%
+  mutate(
+    month = lubridate::floor_date(date, unit = "month"),  
+    lag_tmax = lag(tmax,n = 1)) 
+# the first lag_tmax of Wakiki is na this time
+
+weather_df %>%
+  group_by(name) %>%
+  mutate(
+    month = lubridate::floor_date(date, unit = "month"),  
+    lag_tmax = lag(tmax,n = 1),
+    tmax_diff = tmax - lag_tmax) %>%
+  summarize(diff_sd = sd(tmax_diff, na.rm = T))
+```
+summary a linear model
+
+```{r}
+weather_df %>%
+  group_by(name) %>%
+  summarize(cor_min_max = cor(tmin, tmax, use = "complete"))
+
+# versus
+weather_df %>%
+  filter(name == "CentralPark_NY") %>%
+  lm(tmax ~ tmin, data = .)
+
+# versus
+weather_df %>%
+  group_by(name) %>%
+  lm(tmax ~ tmin, data = .)
+```
 
 
 
 
 
-
+ 
